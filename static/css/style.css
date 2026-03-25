@@ -1,0 +1,124 @@
+@font-face {
+  font-family: 'Pretendard';
+  font-display: swap;
+  src: local('Pretendard');
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif; background: #f0f4f8; color: #1a202c; }
+
+.header {
+  background: linear-gradient(135deg, #1e40af, #3b82f6);
+  color: #fff; padding: 2rem; text-align: center;
+}
+.header h1 { font-size: 1.8rem; margin-bottom: .4rem; }
+.header p { opacity: .85; font-size: .95rem; }
+
+.container { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+
+/* 필터 패널 */
+.filter-panel {
+  background: #fff; border-radius: 12px; padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 1.5rem;
+}
+.filter-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+.filter-group label { display: block; font-weight: 600; font-size: .85rem; margin-bottom: .35rem; color: #475569; }
+.filter-group .label-hint { font-weight: 400; color: #94a3b8; font-size: .75rem; }
+.filter-group select,
+.filter-group input {
+  width: 100%; padding: .55rem .7rem; border: 1px solid #cbd5e1;
+  border-radius: 8px; font-size: .9rem; background: #fff;
+}
+.filter-group select:focus,
+.filter-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+
+.btn-row { margin-top: 1rem; display: flex; gap: .75rem; align-items: center; }
+.btn {
+  padding: .6rem 1.4rem; border: none; border-radius: 8px;
+  font-size: .9rem; font-weight: 600; cursor: pointer; transition: .15s;
+}
+.btn-primary { background: #3b82f6; color: #fff; }
+.btn-primary:hover { background: #2563eb; }
+.btn-secondary { background: #e2e8f0; color: #475569; }
+.btn-secondary:hover { background: #cbd5e1; }
+.btn-help { background: #fef3c7; color: #92400e; font-size: .8rem; padding: .5rem 1rem; }
+.btn-help:hover { background: #fde68a; }
+
+/* 소득분위 가이드 */
+.income-guide {
+  display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
+  padding: 1.2rem; margin-top: 1rem; font-size: .85rem; line-height: 1.7;
+}
+.income-guide.active { display: block; }
+.income-guide h4 { color: #92400e; margin-bottom: .5rem; font-size: .9rem; }
+.income-guide table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
+.income-guide th { text-align: left; padding: .3rem .5rem; background: #fef3c7; color: #78350f; font-size: .8rem; }
+.income-guide td { padding: .3rem .5rem; border-bottom: 1px solid #fde68a; font-size: .8rem; }
+.income-guide .tip { margin-top: .7rem; color: #78350f; font-size: .8rem; }
+
+/* 결과 */
+.result-count { font-size: .9rem; color: #64748b; margin-bottom: 1rem; }
+.result-count strong { color: #1e40af; }
+
+.card {
+  background: #fff; border-radius: 12px; padding: 1.25rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 1rem;
+  border-left: 4px solid #3b82f6; transition: .2s;
+}
+.card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); transform: translateY(-1px); }
+
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .5rem; }
+.card-title { font-size: 1.1rem; font-weight: 700; color: #1e293b; }
+.badge {
+  display: inline-block; padding: .2rem .6rem; border-radius: 20px;
+  font-size: .75rem; font-weight: 600; background: #dbeafe; color: #1e40af;
+}
+.badge-gender {
+  background: #fce7f3; color: #9d174d;
+}
+.badge-gender-m {
+  background: #dbeafe; color: #1e40af;
+}
+.card-desc { color: #475569; font-size: .9rem; margin-bottom: .75rem; }
+
+.card-meta {
+  display: flex; flex-wrap: wrap; gap: .5rem .75rem; font-size: .8rem; color: #64748b;
+}
+.card-meta span::before { margin-right: .3rem; }
+
+.tag-list { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .65rem; }
+.tag {
+  padding: .15rem .5rem; border-radius: 6px; font-size: .75rem;
+  background: #f1f5f9; color: #475569;
+}
+
+/* 상세 모달 */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  z-index: 100; align-items: center; justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: #fff; border-radius: 16px; padding: 2rem; width: 90%; max-width: 560px;
+  max-height: 80vh; overflow-y: auto; position: relative;
+}
+.modal-close {
+  position: absolute; top: 1rem; right: 1rem; background: none; border: none;
+  font-size: 1.4rem; cursor: pointer; color: #94a3b8;
+}
+.modal h2 { font-size: 1.3rem; margin-bottom: .5rem; }
+.modal .badge { margin-bottom: 1rem; }
+.detail-row { padding: .6rem 0; border-bottom: 1px solid #f1f5f9; font-size: .9rem; }
+.detail-row:last-child { border: none; }
+.detail-label { font-weight: 600; color: #475569; min-width: 80px; display: inline-block; }
+
+.empty-state { text-align: center; padding: 3rem 1rem; color: #94a3b8; }
+.empty-state .icon { font-size: 3rem; margin-bottom: .5rem; }
+
+@media (max-width: 600px) {
+  .filter-grid { grid-template-columns: 1fr; }
+  .header h1 { font-size: 1.3rem; }
+}
