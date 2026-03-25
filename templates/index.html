@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "보조금 조건 검색 서비스",
+  "url": "{{ canonical_url or '/' }}",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "{{ canonical_url or '/' }}?keyword={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <!-- 필터 -->
+  <div class="filter-panel">
+    <div class="filter-grid">
+      <div class="filter-group">
+        <label>만 나이
+          <span class="label-hint">
+            <a href="javascript:void(0)" id="ageToggle" onclick="toggleAgeInput()" style="color:#3b82f6;text-decoration:underline;cursor:pointer">생년월일로 입력</a>
+          </span>
+        </label>
+        <div id="ageDirectWrap">
+          <input type="number" id="age" placeholder="예: 30" min="1" max="120">
+        </div>
+        <div id="ageBirthWrap" style="display:none">
+          <input type="date" id="birthDate" onchange="calcAge()" style="width:100%">
+          <div id="ageResult" style="font-size:.8rem;color:#3b82f6;margin-top:.3rem"></div>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label for="gender">성별</label>
+        <select id="gender">
+          <option value="">전체</option>
+          <option value="남성">남성</option>
+          <option value="여성">여성</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="region">지역</label>
+        <select id="region"><option value="">전체</option></select>
+      </div>
+      <div class="filter-group">
+        <label for="category">분류</label>
+        <select id="category"><option value="">전체</option></select>
+      </div>
+      <div class="filter-group">
+        <label for="businessType">업종</label>
+        <select id="businessType"><option value="">전체</option></select>
+      </div>
+      <div class="filter-group">
+        <label for="income">소득분위 <span class="label-hint">(%)</span></label>
+        <input type="number" id="income" placeholder="1~100" min="1" max="100">
+      </div>
+      <div class="filter-group">
+        <label for="keyword">키워드</label>
+        <input type="text" id="keyword" placeholder="보조금명, 기관명 등">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="search()">검색</button>
+      <button class="btn btn-secondary" onclick="resetFilters()">초기화</button>
+      <button class="btn btn-help" onclick="toggleIncomeGuide()">내 소득분위 확인하기</button>
+    </div>
+
+    <!-- 소득분위 간이 가이드 -->
+    <div class="income-guide" id="incomeGuide">
+      <h4>소득분위 간편 확인 가이드</h4>
+      <p>소득분위는 전체 가구를 소득 순으로 나눈 비율(%)입니다. 숫자가 낮을수록 소득이 낮습니다.</p>
+      <table>
+        <tr><th>소득분위</th><th>1인 가구 (월소득)</th><th>4인 가구 (월소득)</th><th>해당 계층</th></tr>
+        <tr><td>~30%</td><td>약 130만원 이하</td><td>약 340만원 이하</td><td>기초~차상위</td></tr>
+        <tr><td>~50%</td><td>약 220만원 이하</td><td>약 570만원 이하</td><td>중위소득 이하</td></tr>
+        <tr><td>~60%</td><td>약 260만원 이하</td><td>약 680만원 이하</td><td>청년 주거 기준</td></tr>
+        <tr><td>~70%</td><td>약 310만원 이하</td><td>약 800만원 이하</td><td>복지 확대 기준</td></tr>
+        <tr><td>~80%</td><td>약 350만원 이하</td><td>약 910만원 이하</td><td>일반 지원 기준</td></tr>
+        <tr><td>~100%</td><td>제한 없음</td><td>제한 없음</td><td>소득 무관</td></tr>
+      </table>
+      <p class="tip">* 2026년 기준 중위소득 기준 추정치입니다. 정확한 확인은 <strong>복지로(bokjiro.go.kr)</strong> 또는 <strong>건강보험료 조회</strong>로 가능합니다.</p>
+    </div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="result-count" id="resultCount"></div>
+  <div id="results"></div>
+</div>
+
+<!-- 상세 모달 (Phase 1: retained, replaced in Phase 2 by detail pages) -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal" id="modalContent"></div>
+</div>
+{% endblock %}
