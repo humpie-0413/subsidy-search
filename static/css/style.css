@@ -147,6 +147,20 @@ body { font-family: 'Pretendard', -apple-system, 'Noto Sans KR', sans-serif; bac
 .share-label { font-size: .85rem; color: #64748b; }
 .btn-sm { padding: .35rem .8rem; font-size: .8rem; }
 
+/* Listing pages */
+.list-page { max-width: 700px; margin: 0 auto; }
+.list-title { font-size: 1.5rem; font-weight: 700; margin-bottom: .5rem; color: #1e293b; }
+.list-count { color: #64748b; margin-bottom: 1.5rem; font-size: .9rem; }
+.list-count strong { color: #1e40af; }
+.list-grid { display: flex; flex-direction: column; gap: .75rem; }
+.list-card { display: block; background: #fff; border-radius: 10px; padding: 1rem; text-decoration: none; color: inherit; box-shadow: 0 1px 4px rgba(0,0,0,.06); transition: .2s; border-left: 3px solid #3b82f6; }
+.list-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); transform: translateY(-1px); }
+.list-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .4rem; }
+.list-card-name { font-weight: 600; font-size: .95rem; }
+.list-card-meta { display: flex; gap: 1rem; font-size: .8rem; color: #64748b; }
+.chip-active { background: #3b82f6; color: #fff; }
+.chip-active:hover { background: #2563eb; }
+
 @media (max-width: 600px) {
   .filter-grid { grid-template-columns: 1fr; }
   .header h1 { font-size: 1.3rem; }
