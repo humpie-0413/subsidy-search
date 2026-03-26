@@ -117,6 +117,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="보조금 조건 검색 서비스", lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
+# Template globals
+templates.env.globals["adsense_client_id"] = os.getenv("ADSENSE_CLIENT_ID", "")
+templates.env.globals["current_year"] = datetime.now().year
+
 
 # --- HTML Routes ---
 

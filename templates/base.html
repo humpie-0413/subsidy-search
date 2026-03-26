@@ -21,19 +21,52 @@
 <meta name="twitter:description" content="{{ page_description | default('나이, 지역, 소득 조건에 맞는 정부 보조금을 검색하세요') }}">
 
 <link rel="stylesheet" href="/static/css/style.css">
+{% if adsense_client_id %}
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ adsense_client_id }}" crossorigin="anonymous"></script>
+{% endif %}
 {% block head_extra %}{% endblock %}
 </head>
 <body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">보조금 검색</a>
+    <div class="nav-links">
+      <a href="/">홈</a>
+      <a href="/calculator">계산기</a>
+    </div>
+  </div>
+</nav>
 
 <div class="header">
   <h1><a href="/" style="color:inherit;text-decoration:none">보조금 조건 검색 서비스</a></h1>
   <p>나에게 맞는 정부 보조금을 빠르게 찾아보세요</p>
 </div>
 
+{% if adsense_client_id %}
+<!-- 상단 배너 광고 -->
+<div class="ad-slot ad-top">
+  <ins class="adsbygoogle" style="display:block" data-ad-client="{{ adsense_client_id }}" data-ad-slot="" data-ad-format="auto" data-full-width-responsive="true"></ins>
+  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+{% endif %}
+
 {% block content %}{% endblock %}
 
-<!-- AdSense slot (activated in Phase 4) -->
-{% block adsense %}{% endblock %}
+{% if adsense_client_id %}
+<!-- 하단 광고 -->
+<div class="ad-slot ad-bottom">
+  <ins class="adsbygoogle" style="display:block" data-ad-client="{{ adsense_client_id }}" data-ad-slot="" data-ad-format="auto" data-full-width-responsive="true"></ins>
+  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+{% endif %}
+
+<footer class="footer">
+  <div class="footer-inner">
+    <p>&copy; {{ current_year }} 보조금 조건 검색 서비스</p>
+    <p class="footer-source">데이터 출처: 정부24(gov.kr), 기업마당(bizinfo.go.kr)</p>
+  </div>
+</footer>
 
 {% block json_ld %}{% endblock %}
 
