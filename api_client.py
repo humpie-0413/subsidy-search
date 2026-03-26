@@ -13,7 +13,7 @@ from data_cleaner import (
     load_mappings,
     normalize_text,
 )
-from models import Subsidy, generate_slug
+from models import Contest, Subsidy, generate_slug
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +151,25 @@ class BizinfoClient(BaseAPIClient):
         "기타": "기타",
     }
 
+    # Keywords to classify an item as a contest/event
+    CONTEST_KEYWORDS = [
+        "공모", "해커톤", "경진대회", "챌린지", "대회",
+        "세미나", "컨퍼런스", "포럼", "워크숍",
+        "교육", "강좌", "특강", "아카데미", "캠프",
+        "멘토링",
+    ]
+
+    # Contest keyword → category mapping
+    CONTEST_CATEGORY_MAP = {
+        "공모": "공모전", "해커톤": "해커톤", "경진대회": "공모전",
+        "챌린지": "공모전", "대회": "공모전",
+        "세미나": "세미나", "컨퍼런스": "세미나", "포럼": "세미나",
+        "워크숍": "세미나",
+        "교육": "교육", "강좌": "교육", "특강": "교육",
+        "아카데미": "교육", "캠프": "교육",
+        "멘토링": "멘토링",
+    }
+
     async def fetch_all(self) -> list[dict]:
         params = {
             "crtfcKey": self.api_key,
@@ -188,9 +207,19 @@ class BizinfoClient(BaseAPIClient):
         date_str = raw.get("reqstBeginEndDe") or raw.get("pblancEndDe") or ""
         if not date_str or not date_str.strip():
             return None
-        # Format: "YYYY-MM-DD ~ YYYY-MM-DD" — take end date
         parts = date_str.strip().split("~")
         return parts[-1].strip() if parts[-1].strip() else None
+
+    def is_contest(self, raw: dict) -> str | None:
+        """Check if item is a contest/event. Returns matched keyword or None."""
+        name = raw.get("pblancNm") or raw.get("title", "")
+        sub_cat = raw.get("pldirSportRealmMlsfcCodeNm", "")
+        hashtags = raw.get("hashTags") or raw.get("hashtags", "")
+        combined = f"{name} {sub_cat} {hashtags}"
+        for kw in self.CONTEST_KEYWORDS:
+            if kw in combined:
+                return kw
+        return None
 
     def normalize(self, raw: dict) -> Subsidy:
         name = normalize_text(
@@ -227,6 +256,37 @@ class BizinfoClient(BaseAPIClient):
             raw_data=raw,
         )
 
+    def normalize_contest(self, raw: dict, matched_keyword: str) -> Contest:
+        """Convert raw API dict to Contest instance."""
+        name = normalize_text(
+            raw.get("pblancNm") or raw.get("title", ""), "이름없음"
+        )
+        description = normalize_text(
+            raw.get("bsnsSumryCn") or raw.get("description", ""), "정보 없음"
+        )
+        organization = normalize_text(
+            raw.get("jrsdInsttNm") or raw.get("author", ""), "정보 없음"
+        )
+        hashtags = raw.get("hashTags") or raw.get("hashtags", "")
+        url = raw.get("pblancUrl") or raw.get("link")
+        target = normalize_text(raw.get("trgetNm"), None)
+        category = self.CONTEST_CATEGORY_MAP.get(matched_keyword, "기타")
+
+        return Contest(
+            id=str(raw.get("pblancId", "")),
+            name=name,
+            slug=generate_slug(name),
+            category=category,
+            description=description,
+            organization=organization,
+            region=self._extract_regions(hashtags),
+            deadline=self._extract_deadline(raw),
+            url=url,
+            target=target,
+            source="bizinfo",
+            raw_data=raw,
+        )
+
 
 class AggregatedClient:
     """Aggregates multiple API sources with deduplication."""
@@ -234,17 +294,25 @@ class AggregatedClient:
     def __init__(self, clients: list[BaseAPIClient]):
         self.clients = clients
 
-    async def fetch_all_sources(self) -> list[Subsidy]:
+    async def fetch_all_sources(self) -> tuple[list[Subsidy], list[Contest]]:
         all_subsidies: list[Subsidy] = []
+        all_contests: list[Contest] = []
         for client in self.clients:
             try:
                 raw_list = await client.fetch_all()
                 for raw in raw_list:
                     try:
+                        # BizinfoClient can distinguish contests from subsidies
+                        if isinstance(client, BizinfoClient):
+                            kw = client.is_contest(raw)
+                            if kw:
+                                c = client.normalize_contest(raw, kw)
+                                all_contests.append(c)
+                                continue
                         s = client.normalize(raw)
                         all_subsidies.append(s)
                     except Exception as e:
                         logger.warning("Normalize error in %s: %s", type(client).__name__, e)
             except Exception as e:
                 logger.warning("Fetch error in %s: %s", type(client).__name__, e)
-        return deduplicate(all_subsidies)
+        return deduplicate(all_subsidies), all_contests

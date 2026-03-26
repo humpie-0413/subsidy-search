@@ -1,4 +1,4 @@
-"""보조금 조건 검색 서비스 — FastAPI 백엔드 (Phase 1)"""
+"""기회 검색 플랫폼 — FastAPI 백엔드"""
 
 import asyncio
 import logging
@@ -19,7 +19,7 @@ from calculator import calculate_income_percentile, extract_amount_number
 from cache import TTLCache
 from data import SUBSIDIES as LEGACY_SUBSIDIES
 from data_cleaner import convert_legacy
-from models import Subsidy
+from models import Contest, Subsidy
 from seo.sitemap import generate_sitemap_xml
 
 load_dotenv()
@@ -41,6 +41,17 @@ def _get_subsidies() -> list[Subsidy]:
     return [convert_legacy(s) for s in LEGACY_SUBSIDIES]
 
 
+def _get_contests() -> list[Contest]:
+    """Get contests from cache or stale cache."""
+    cached = cache.get("contests:list")
+    if cached is not None:
+        return cached
+    stale = cache.get_stale("contests:list")
+    if stale is not None:
+        return stale
+    return []
+
+
 def _build_filters(subsidies: list[Subsidy]) -> dict:
     """Derive filter options from current subsidies list."""
     regions = sorted(set(r for s in subsidies for r in s.region))
@@ -57,10 +68,14 @@ def _build_filters(subsidies: list[Subsidy]) -> dict:
 async def _initial_fetch(agg_client: AggregatedClient):
     """Fetch data from all API sources on startup."""
     try:
-        subsidies = await agg_client.fetch_all_sources()
+        subsidies, contests = await agg_client.fetch_all_sources()
         if subsidies:
             cache.set("subsidies:list", subsidies, ttl_seconds=86400)
             logger.info("Loaded %d subsidies from APIs", len(subsidies))
+        if contests:
+            cache.set("contests:list", contests, ttl_seconds=86400)
+            logger.info("Loaded %d contests from APIs", len(contests))
+        if subsidies:
             return
     except Exception as e:
         logger.warning("Initial API fetch failed: %s", e)
@@ -74,10 +89,13 @@ async def _data_refresh_loop(agg_client: AggregatedClient):
     while True:
         await asyncio.sleep(86400)
         try:
-            subsidies = await agg_client.fetch_all_sources()
+            subsidies, contests = await agg_client.fetch_all_sources()
             if subsidies:
                 cache.set("subsidies:list", subsidies, ttl_seconds=86400)
                 logger.info("Refreshed %d subsidies", len(subsidies))
+            if contests:
+                cache.set("contests:list", contests, ttl_seconds=86400)
+                logger.info("Refreshed %d contests", len(contests))
         except Exception as e:
             logger.warning("Refresh failed (stale-while-error active): %s", e)
 
@@ -114,7 +132,7 @@ async def lifespan(app: FastAPI):
     cleanup_task.cancel()
 
 
-app = FastAPI(title="보조금 조건 검색 서비스", lifespan=lifespan)
+app = FastAPI(title="기회 검색 플랫폼", lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Template globals
@@ -129,15 +147,14 @@ def index(request: Request):
     site_domain = os.getenv("SITE_DOMAIN", "")
     canonical = f"https://{site_domain}/" if site_domain else None
     return templates.TemplateResponse(request, "index.html", {
-        "page_title": "보조금 조건 검색 서비스",
-        "page_description": "나이, 지역, 소득 조건에 맞는 정부 보조금을 검색하세요",
+        "page_title": "기회 검색 - 보조금 · 공모전 · 지원사업 통합 검색",
+        "page_description": "나이, 지역, 소득 조건에 맞는 정부 보조금과 공모전을 검색하세요",
         "canonical_url": canonical,
         "og_type": "website",
     })
 
 
 def _find_subsidy(subsidy_id: str) -> Subsidy | None:
-    """Find a single subsidy by ID."""
     for s in _get_subsidies():
         if s.id == subsidy_id:
             return s
@@ -145,7 +162,6 @@ def _find_subsidy(subsidy_id: str) -> Subsidy | None:
 
 
 def _get_related(subsidy: Subsidy, limit: int = 3) -> list[Subsidy]:
-    """Get related subsidies in same category, excluding self."""
     all_subsidies = _get_subsidies()
     related = [s for s in all_subsidies if s.category == subsidy.category and s.id != subsidy.id]
     return related[:limit]
@@ -197,7 +213,7 @@ def calculator_page(
     share_url = ""
 
     if age is not None and region and income is not None and household:
-        income_monthly = income * 10000  # 만원 → 원
+        income_monthly = income * 10000
         income_percentile = calculate_income_percentile(income_monthly, household)
 
         matched = []
@@ -287,6 +303,166 @@ def region_page(request: Request, region: str):
     })
 
 
+# --- Contest Routes ---
+
+@app.get("/contests", response_class=HTMLResponse)
+def contests_page(
+    request: Request,
+    category: Optional[str] = Query(None),
+    region: Optional[str] = Query(None),
+):
+    year = datetime.now().year
+    site_domain = os.getenv("SITE_DOMAIN", "")
+    all_contests = _get_contests()
+
+    filtered = all_contests
+    if category:
+        filtered = [c for c in filtered if c.category == category]
+    if region:
+        filtered = [c for c in filtered if region in c.region]
+
+    contest_categories = sorted(set(c.category for c in all_contests))
+    contest_regions = sorted(set(r for c in all_contests for r in c.region))
+
+    canonical = f"https://{site_domain}/contests" if site_domain else None
+    return templates.TemplateResponse(request, "contest_list.html", {
+        "page_title": f"{year} 공모전/행사 정보 ({len(filtered)}건)",
+        "page_description": f"{year}년 공모전, 해커톤, 교육, 세미나 등 {len(filtered)}건의 행사 정보",
+        "canonical_url": canonical,
+        "og_type": "website",
+        "list_title": f"{year} 공모전/행사 정보",
+        "contests": filtered,
+        "domain": site_domain,
+        "contest_categories": contest_categories,
+        "contest_regions": contest_regions,
+        "active_category": category or "",
+        "active_region": region or "",
+    })
+
+
+@app.get("/contests/category/{category}", response_class=HTMLResponse)
+def contest_category_page(request: Request, category: str):
+    year = datetime.now().year
+    site_domain = os.getenv("SITE_DOMAIN", "")
+    all_contests = _get_contests()
+    filtered = [c for c in all_contests if c.category == category]
+    contest_categories = sorted(set(c.category for c in all_contests))
+    contest_regions = sorted(set(r for c in all_contests for r in c.region))
+    canonical = f"https://{site_domain}/contests/category/{category}" if site_domain else None
+    return templates.TemplateResponse(request, "contest_list.html", {
+        "page_title": f"{year} {category} 목록 ({len(filtered)}건)",
+        "page_description": f"{year}년 {category} 관련 행사 {len(filtered)}건",
+        "canonical_url": canonical,
+        "og_type": "website",
+        "list_title": f"{year} {category} 목록",
+        "contests": filtered,
+        "domain": site_domain,
+        "contest_categories": contest_categories,
+        "contest_regions": contest_regions,
+        "active_category": category,
+        "active_region": "",
+    })
+
+
+def _find_contest(contest_id: str) -> Contest | None:
+    for c in _get_contests():
+        if c.id == contest_id:
+            return c
+    return None
+
+
+@app.get("/contests/{contest_id}/{slug}", response_class=HTMLResponse)
+def contest_detail(request: Request, contest_id: str, slug: str):
+    contest = _find_contest(contest_id)
+    if not contest:
+        return HTMLResponse(content="공모전을 찾을 수 없습니다", status_code=404)
+    if slug != contest.slug:
+        return RedirectResponse(
+            url=f"/contests/{contest_id}/{contest.slug}", status_code=301
+        )
+    year = datetime.now().year
+    site_domain = os.getenv("SITE_DOMAIN", "")
+    canonical = f"https://{site_domain}/contests/{contest_id}/{contest.slug}" if site_domain else None
+
+    all_contests = _get_contests()
+    related = [c for c in all_contests if c.category == contest.category and c.id != contest.id][:3]
+
+    return templates.TemplateResponse(request, "contest_detail.html", {
+        "contest": contest,
+        "related": related,
+        "page_title": f"{contest.name} - 신청방법 및 일정 ({year})",
+        "page_description": f"{contest.name}: {contest.organization}, 마감 {contest.deadline or '상시'}",
+        "canonical_url": canonical,
+        "og_type": "article",
+    })
+
+
+# --- Age Landing Pages ---
+
+@app.get("/youth", response_class=HTMLResponse)
+def youth_page(request: Request):
+    year = datetime.now().year
+    site_domain = os.getenv("SITE_DOMAIN", "")
+    subsidies = _get_subsidies()
+    contests = _get_contests()
+
+    # Filter for youth (19-34)
+    youth_subsidies = [
+        s for s in subsidies
+        if (s.age_min is None or s.age_min <= 34)
+        and (s.age_max is None or s.age_max >= 19)
+    ][:10]
+
+    youth_contests = contests[:5]
+
+    filters = _build_filters(subsidies)
+    canonical = f"https://{site_domain}/youth" if site_domain else None
+    return templates.TemplateResponse(request, "age_landing.html", {
+        "page_title": f"{year} 청년 보조금 · 공모전 총정리",
+        "page_description": f"{year}년 만 19~34세 청년을 위한 보조금, 공모전, 지원사업 총정리",
+        "canonical_url": canonical,
+        "og_type": "website",
+        "year": year,
+        "age_group": "청년",
+        "age_range": "19~34",
+        "subsidies": youth_subsidies,
+        "contests": youth_contests,
+        "all_categories": filters["categories"],
+    })
+
+
+@app.get("/midlife", response_class=HTMLResponse)
+def midlife_page(request: Request):
+    year = datetime.now().year
+    site_domain = os.getenv("SITE_DOMAIN", "")
+    subsidies = _get_subsidies()
+    contests = _get_contests()
+
+    # Filter for midlife (40-65)
+    midlife_subsidies = [
+        s for s in subsidies
+        if (s.age_min is None or s.age_min <= 65)
+        and (s.age_max is None or s.age_max >= 40)
+    ][:10]
+
+    midlife_contests = contests[:5]
+
+    filters = _build_filters(subsidies)
+    canonical = f"https://{site_domain}/midlife" if site_domain else None
+    return templates.TemplateResponse(request, "age_landing.html", {
+        "page_title": f"{year} 중장년 재취업 · 창업 지원금 총정리",
+        "page_description": f"{year}년 만 40~65세 중장년을 위한 재취업, 창업 지원금 총정리",
+        "canonical_url": canonical,
+        "og_type": "website",
+        "year": year,
+        "age_group": "중장년",
+        "age_range": "40~65",
+        "subsidies": midlife_subsidies,
+        "contests": midlife_contests,
+        "all_categories": filters["categories"],
+    })
+
+
 # --- API Routes ---
 
 @app.get("/api/filters")
@@ -355,6 +531,32 @@ def get_subsidy(subsidy_id: str):
     return {"error": "보조금을 찾을 수 없습니다"}
 
 
+@app.get("/api/contests")
+def get_contests(
+    category: Optional[str] = Query(None),
+    region: Optional[str] = Query(None),
+    keyword: Optional[str] = Query(None),
+):
+    results = _get_contests()
+
+    if category:
+        results = [c for c in results if c.category == category]
+
+    if region:
+        results = [c for c in results if region in c.region]
+
+    if keyword:
+        kw = keyword.lower()
+        results = [
+            c for c in results
+            if kw in c.name.lower()
+            or kw in c.description.lower()
+            or kw in c.organization.lower()
+        ]
+
+    return {"count": len(results), "results": [c.to_dict() for c in results]}
+
+
 # --- SEO Routes ---
 
 @app.get("/robots.txt", response_class=PlainTextResponse)
@@ -376,7 +578,8 @@ def sitemap_xml():
 
     domain = os.getenv("SITE_DOMAIN", "localhost:8000")
     subsidies = _get_subsidies()
-    xml = generate_sitemap_xml(domain=domain, subsidies=subsidies)
+    contests = _get_contests()
+    xml = generate_sitemap_xml(domain=domain, subsidies=subsidies, contests=contests)
     cache.set("seo:sitemap", xml, ttl_seconds=86400)
     return Response(content=xml, media_type="application/xml")
 

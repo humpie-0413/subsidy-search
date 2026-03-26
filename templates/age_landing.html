@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "{{ year }} {{ age_group }} 보조금 · 공모전 총정리",
+  "description": "{{ page_description }}"
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="landing-page">
+    <h2 class="landing-title">{{ year }} {{ age_group }} 보조금 · 공모전 총정리</h2>
+    <p class="landing-subtitle">만 {{ age_range }}세 {{ age_group }}을 위한 지원사업을 한눈에 확인하세요</p>
+
+    <div class="landing-cta">
+      <a href="/calculator" class="btn btn-primary">내 조건으로 검색하기</a>
+    </div>
+
+    {% if subsidies %}
+    <section class="landing-section">
+      <h3>{{ age_group }} 보조금 TOP {{ subsidies | length }}</h3>
+      <div class="list-grid">
+        {% for s in subsidies %}
+        <a href="/subsidies/{{ s.id }}/{{ s.slug }}" class="list-card">
+          <div class="list-card-header">
+            <span class="list-card-name">{{ s.name }}</span>
+            <span class="badge">{{ s.category }}</span>
+          </div>
+          <div class="list-card-meta">
+            <span>{{ s.amount }}</span>
+            <span>마감: {{ s.deadline or '상시' }}</span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if contests %}
+    <section class="landing-section">
+      <h3>{{ age_group }} 공모전/행사</h3>
+      <div class="list-grid">
+        {% for c in contests %}
+        <a href="/contests/{{ c.id }}/{{ c.slug }}" class="list-card">
+          <div class="list-card-header">
+            <span class="list-card-name">{{ c.name }}</span>
+            <span class="badge badge-contest">{{ c.category }}</span>
+          </div>
+          <div class="list-card-meta">
+            <span>{{ c.organization }}</span>
+            <span>마감: {{ c.deadline or '상시' }}</span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      <div style="margin-top:1rem">
+        <a href="/contests" class="btn btn-secondary">전체 공모전 보기</a>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="landing-section">
+      <h3>카테고리별 바로가기</h3>
+      <div class="link-chips">
+        {% for cat in all_categories %}
+        <a href="/category/{{ cat }}" class="chip">{{ cat }}</a>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

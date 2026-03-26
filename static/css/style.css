@@ -185,8 +185,29 @@ body {
   font-size: .85rem; font-weight: 500; transition: .15s;
 }
 .chip:hover { background: #bfdbfe; }
+.chip-sm { font-size: .75rem; padding: .3rem .7rem; }
 .chip-active { background: #3b82f6; color: #fff; }
 .chip-active:hover { background: #2563eb; }
+
+/* Contest badge */
+.badge-contest { background: #fef3c7; color: #92400e; }
+
+/* Filter bar */
+.filter-bar { margin-bottom: 1.5rem; }
+
+/* Nav toggle (mobile) */
+.nav-toggle {
+  display: none; background: none; border: none; color: #fff;
+  font-size: 1.3rem; cursor: pointer; padding: .2rem;
+}
+
+/* Landing pages */
+.landing-page { max-width: 700px; margin: 0 auto; }
+.landing-title { font-size: 1.5rem; font-weight: 800; margin-bottom: .5rem; color: #1e293b; }
+.landing-subtitle { color: #64748b; margin-bottom: 1.5rem; font-size: .95rem; }
+.landing-cta { margin-bottom: 2rem; }
+.landing-section { margin-bottom: 2.5rem; }
+.landing-section h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem; color: #1e293b; }
 
 /* Calculator page */
 .calc-page { max-width: 700px; margin: 0 auto; }
@@ -289,8 +310,13 @@ body {
   .list-card-meta { flex-direction: column; gap: .3rem; }
   .btn-row { flex-direction: column; }
   .btn-row .btn { width: 100%; }
-  .nav-inner { padding: .5rem 1rem; }
-  .nav-links { gap: .8rem; }
+  .nav-inner { padding: .5rem 1rem; flex-wrap: wrap; }
+  .nav-toggle { display: block; }
+  .nav-links {
+    display: none; width: 100%; flex-direction: column;
+    gap: .5rem; padding-top: .5rem;
+  }
+  .nav-links.nav-open { display: flex; }
   .income-guide table { font-size: .7rem; }
   .income-guide th, .income-guide td { padding: .2rem .3rem; }
 }

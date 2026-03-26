@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ page_title | default("보조금 조건 검색 서비스") }} | 보조금 검색</title>
-<meta name="description" content="{{ page_description | default('나이, 지역, 소득 조건에 맞는 정부 보조금을 검색하세요') }}">
+<title>{{ page_title | default("기회 검색") }} | 기회 검색</title>
+<meta name="description" content="{{ page_description | default('보조금 · 공모전 · 지원사업 통합 검색') }}">
 <meta name="robots" content="index, follow">
 {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
 
 <!-- Open Graph -->
-<meta property="og:title" content="{{ page_title | default('보조금 조건 검색 서비스') }}">
-<meta property="og:description" content="{{ page_description | default('나이, 지역, 소득 조건에 맞는 정부 보조금을 검색하세요') }}">
+<meta property="og:title" content="{{ page_title | default('기회 검색') }}">
+<meta property="og:description" content="{{ page_description | default('보조금 · 공모전 · 지원사업 통합 검색') }}">
 <meta property="og:type" content="{{ og_type | default('website') }}">
 {% if canonical_url %}<meta property="og:url" content="{{ canonical_url }}">{% endif %}
 <meta property="og:locale" content="ko_KR">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="{{ page_title | default('보조금 조건 검색 서비스') }}">
-<meta name="twitter:description" content="{{ page_description | default('나이, 지역, 소득 조건에 맞는 정부 보조금을 검색하세요') }}">
+<meta name="twitter:title" content="{{ page_title | default('기회 검색') }}">
+<meta name="twitter:description" content="{{ page_description | default('보조금 · 공모전 · 지원사업 통합 검색') }}">
 
 <link rel="stylesheet" href="/static/css/style.css">
 {% if adsense_client_id %}
@@ -30,21 +30,24 @@
 
 <nav class="nav">
   <div class="nav-inner">
-    <a href="/" class="nav-brand">보조금 검색</a>
+    <a href="/" class="nav-brand">기회 검색</a>
+    <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('nav-open')" aria-label="메뉴">&#9776;</button>
     <div class="nav-links">
       <a href="/">홈</a>
+      <a href="/contests">공모전</a>
+      <a href="/youth">청년</a>
+      <a href="/midlife">중장년</a>
       <a href="/calculator">계산기</a>
     </div>
   </div>
 </nav>
 
 <div class="header">
-  <h1><a href="/" style="color:inherit;text-decoration:none">보조금 조건 검색 서비스</a></h1>
-  <p>나에게 맞는 정부 보조금을 빠르게 찾아보세요</p>
+  <h1><a href="/" style="color:inherit;text-decoration:none">내게 맞는 기회를 찾아보세요</a></h1>
+  <p>보조금 · 공모전 · 지원사업 통합 검색</p>
 </div>
 
 {% if adsense_client_id %}
-<!-- 상단 배너 광고 -->
 <div class="ad-slot ad-top">
   <ins class="adsbygoogle" style="display:block" data-ad-client="{{ adsense_client_id }}" data-ad-slot="" data-ad-format="auto" data-full-width-responsive="true"></ins>
   <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
@@ -54,7 +57,6 @@
 {% block content %}{% endblock %}
 
 {% if adsense_client_id %}
-<!-- 하단 광고 -->
 <div class="ad-slot ad-bottom">
   <ins class="adsbygoogle" style="display:block" data-ad-client="{{ adsense_client_id }}" data-ad-slot="" data-ad-format="auto" data-full-width-responsive="true"></ins>
   <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
@@ -63,7 +65,7 @@
 
 <footer class="footer">
   <div class="footer-inner">
-    <p>&copy; {{ current_year }} 보조금 조건 검색 서비스</p>
+    <p>&copy; {{ current_year }} 기회 검색 서비스</p>
     <p class="footer-source">데이터 출처: 정부24(gov.kr), 기업마당(bizinfo.go.kr)</p>
   </div>
 </footer>

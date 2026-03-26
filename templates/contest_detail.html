@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Event",
+  "name": "{{ contest.name }}",
+  "description": "{{ contest.description }}",
+  "organizer": {
+    "@type": "Organization",
+    "name": "{{ contest.organization }}"
+  },
+  "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
+  {% if contest.url %}"url": "{{ contest.url }}",{% endif %}
+  "location": {
+    "@type": "Place",
+    "name": "{{ contest.region | join(', ') }}"
+  }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="detail-page">
+    <a href="/contests" class="back-link">&larr; 공모전 목록으로 돌아가기</a>
+
+    <h2 class="detail-title">{{ contest.name }}</h2>
+    <div class="detail-badges">
+      <span class="badge badge-contest">{{ contest.category }}</span>
+    </div>
+
+    <p class="detail-desc">{{ contest.description }}</p>
+
+    <div class="detail-info">
+      <div class="detail-row"><span class="detail-label">주최기관</span> {{ contest.organization }}</div>
+      <div class="detail-row"><span class="detail-label">지원대상</span> {{ contest.target or '제한 없음' }}</div>
+      <div class="detail-row"><span class="detail-label">지역</span> {{ contest.region | join(', ') }}</div>
+      <div class="detail-row"><span class="detail-label">신청마감</span> {{ contest.deadline or '상시' }}</div>
+      {% if contest.url %}
+      <div class="detail-row"><span class="detail-label">원본 공고</span> <a href="{{ contest.url }}" target="_blank" rel="noopener">바로가기</a></div>
+      {% endif %}
+    </div>
+
+    {% if related %}
+    <div class="related-section">
+      <h3>관련 공모전/행사</h3>
+      <div class="related-grid">
+        {% for r in related %}
+        <a href="/contests/{{ r.id }}/{{ r.slug }}" class="related-card">
+          <span class="related-name">{{ r.name }}</span>
+          <span class="related-amount">{{ r.organization }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="related-section">
+      <h3>더 찾아보기</h3>
+      <div class="link-chips">
+        <a href="/contests/category/{{ contest.category }}" class="chip">{{ contest.category }} 더보기</a>
+        {% for r in contest.region[:3] %}
+        <a href="/contests?region={{ r }}" class="chip">{{ r }} 공모전</a>
+        {% endfor %}
+        <a href="/contests" class="chip">전체 공모전</a>
+        <a href="/" class="chip">보조금 검색</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

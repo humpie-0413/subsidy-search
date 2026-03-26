@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "{{ list_title }}",
+  "numberOfItems": {{ contests | length }},
+  "itemListElement": [
+    {% for c in contests %}
+    {
+      "@type": "ListItem",
+      "position": {{ loop.index }},
+      "url": "https://{{ domain }}/contests/{{ c.id }}/{{ c.slug }}",
+      "name": "{{ c.name }}"
+    }{{ "," if not loop.last else "" }}
+    {% endfor %}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="list-page">
+    <a href="/" class="back-link">&larr; 홈으로 돌아가기</a>
+
+    <h2 class="list-title">{{ list_title }}</h2>
+    <p class="list-count">총 <strong>{{ contests | length }}건</strong>의 공모전/행사</p>
+
+    <div class="filter-bar">
+      <div class="link-chips">
+        <a href="/contests" class="chip{{ ' chip-active' if not active_category else '' }}">전체</a>
+        {% for cat in contest_categories %}
+        <a href="/contests?category={{ cat }}" class="chip{{ ' chip-active' if cat == active_category else '' }}">{{ cat }}</a>
+        {% endfor %}
+      </div>
+      {% if contest_regions %}
+      <div class="link-chips" style="margin-top:.5rem">
+        {% for r in contest_regions %}
+        <a href="/contests?region={{ r }}" class="chip chip-sm{{ ' chip-active' if r == active_region else '' }}">{{ r }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% if contests %}
+    <div class="list-grid">
+      {% for c in contests %}
+      <a href="/contests/{{ c.id }}/{{ c.slug }}" class="list-card">
+        <div class="list-card-header">
+          <span class="list-card-name">{{ c.name }}</span>
+          <span class="badge badge-contest">{{ c.category }}</span>
+        </div>
+        <div class="list-card-meta">
+          <span>{{ c.organization }}</span>
+          <span>마감: {{ c.deadline or '상시' }}</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">&#128270;</div>
+      <p>해당 조건의 공모전/행사가 없습니다.</p>
+    </div>
+    {% endif %}
+
+    <div class="related-section">
+      <h3>더 찾아보기</h3>
+      <div class="link-chips">
+        <a href="/" class="chip">보조금 검색</a>
+        <a href="/calculator" class="chip">보조금 매칭 계산기</a>
+        <a href="/youth" class="chip">청년 지원</a>
+        <a href="/midlife" class="chip">중장년 지원</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
