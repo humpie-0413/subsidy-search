@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse,
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from api_client import AggregatedClient, Bojokim24Client, BizinfoClient, Gov24Client
+from api_client import AggregatedClient, Gov24OdcloudClient, BizinfoClient
 from calculator import calculate_income_percentile, extract_amount_number
 from cache import TTLCache
 from data import SUBSIDIES as LEGACY_SUBSIDIES
@@ -97,8 +97,7 @@ async def lifespan(app: FastAPI):
 
     clients = []
     if data_go_kr_key:
-        clients.append(Bojokim24Client(api_key=data_go_kr_key))
-        clients.append(Gov24Client(api_key=data_go_kr_key))
+        clients.append(Gov24OdcloudClient(api_key=data_go_kr_key))
     if bizinfo_key:
         clients.append(BizinfoClient(api_key=bizinfo_key))
 

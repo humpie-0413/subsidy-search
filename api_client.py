@@ -69,77 +69,61 @@ class BaseAPIClient(ABC):
         return None
 
 
-class Bojokim24Client(BaseAPIClient):
-    """보조금24 API client (data.go.kr)."""
+class Gov24OdcloudClient(BaseAPIClient):
+    """정부24 보조금 API client (api.odcloud.kr)."""
 
-    BASE_URL = "https://apis.data.go.kr/1210000/BojoGmSvc/getBojoGmList"
+    BASE_URL = "https://api.odcloud.kr/api/gov24/v3/serviceList"
+    MAX_RECORDS = 500
 
     async def fetch_all(self) -> list[dict]:
         records = []
         page = 1
+        per_page = 100
         while True:
             params = {
                 "serviceKey": self.api_key,
-                "pageNo": page,
-                "numOfRows": 100,
-                "type": "json",
+                "page": page,
+                "perPage": per_page,
             }
             data = await self._fetch_with_retry(self.BASE_URL, params)
             if not data:
                 break
             try:
-                items = data.get("response", {}).get("body", {}).get("items", [])
+                items = data.get("data", [])
                 if not items:
                     break
                 records.extend(items)
-                total = int(
-                    data.get("response", {}).get("body", {}).get("totalCount", 0)
-                )
+                total = min(int(data.get("totalCount", 0)), self.MAX_RECORDS)
                 if len(records) >= total:
                     break
                 page += 1
             except (KeyError, TypeError):
                 break
-        return records
+        return records[:self.MAX_RECORDS]
 
     def normalize(self, raw: dict) -> Subsidy:
-        age_from = raw.get("AGE_FROM", "")
-        age_to = raw.get("AGE_TO", "")
-        gender_raw = raw.get("GENDER", "")
-        regions_raw = raw.get("APPLY_REGION", "")
-        biz_types_raw = raw.get("BIZ_TYPE", "")
-        docs_raw = raw.get("DOCS", "")
-        income_raw = raw.get("INCOME_LMT", "")
-
-        regions = [
-            apply_region_mapping(r.strip(), _get_mappings()[1])
-            for r in regions_raw.split(",") if r.strip()
-        ] if regions_raw else ["전국"]
+        cat_map, region_map = _get_mappings()
+        raw_category = normalize_text(raw.get("서비스분야", ""), "기타")
+        deadline_raw = normalize_text(raw.get("신청기한"), None)
 
         return Subsidy(
-            id=str(raw.get("BIZ_ID", "")),
-            name=normalize_text(raw.get("BIZ_NM", ""), "이름없음"),
-            slug=generate_slug(raw.get("BIZ_NM", "")),
-            category=apply_category_mapping(
-                normalize_text(raw.get("BKCC_NM", ""), "기타"), _get_mappings()[0]
-            ),
-            description=normalize_text(raw.get("BIZ_CN", ""), "정보 없음"),
-            amount=normalize_text(raw.get("SPORT_CN", ""), "정보 없음"),
-            organization=normalize_text(raw.get("EXEC_INST", ""), "정보 없음"),
-            region=regions,
-            age_min=int(age_from) if age_from.isdigit() else None,
-            age_max=int(age_to) if age_to.isdigit() else None,
-            gender=None if not gender_raw or gender_raw == "무관" else gender_raw,
-            income_percentile=int(income_raw) if income_raw.isdigit() else None,
-            business_types=[
-                b.strip() for b in biz_types_raw.split(",") if b.strip()
-            ] if biz_types_raw else [],
-            deadline=normalize_text(raw.get("DEADLINE"), None),
-            documents=[
-                d.strip() for d in docs_raw.split(",") if d.strip()
-            ] if docs_raw else [],
-            url=raw.get("URL"),
-            source="bojokim24",
+            id=str(raw.get("서비스ID", "")),
+            name=normalize_text(raw.get("서비스명", ""), "이름없음"),
+            slug=generate_slug(raw.get("서비스명", "")),
+            category=apply_category_mapping(raw_category, cat_map),
+            description=normalize_text(raw.get("서비스목적요약", ""), "정보 없음"),
+            amount=normalize_text(raw.get("지원내용", ""), "정보 없음"),
+            organization=normalize_text(raw.get("소관기관명", ""), "정보 없음"),
+            region=["전국"],
+            age_min=None,
+            age_max=None,
+            gender=None,
+            income_percentile=None,
+            business_types=[],
+            deadline=deadline_raw,
+            documents=[],
+            url=raw.get("상세조회URL"),
+            source="gov24",
             raw_data=raw,
         )
 
@@ -202,62 +186,6 @@ class BizinfoClient(BaseAPIClient):
             documents=[],
             url=raw.get("detailUrl"),
             source="bizinfo",
-            raw_data=raw,
-        )
-
-
-class Gov24Client(BaseAPIClient):
-    """정부24 API client (data.go.kr)."""
-
-    BASE_URL = "https://apis.data.go.kr/1741000/publicSvc/getPublicSvcList"
-
-    async def fetch_all(self) -> list[dict]:
-        records = []
-        page = 1
-        while True:
-            params = {
-                "serviceKey": self.api_key,
-                "pageNo": page,
-                "numOfRows": 100,
-                "type": "json",
-            }
-            data = await self._fetch_with_retry(self.BASE_URL, params)
-            if not data:
-                break
-            try:
-                items = data.get("response", {}).get("body", {}).get("items", [])
-                if not items:
-                    break
-                records.extend(items)
-                total = int(
-                    data.get("response", {}).get("body", {}).get("totalCount", 0)
-                )
-                if len(records) >= total:
-                    break
-                page += 1
-            except (KeyError, TypeError):
-                break
-        return records
-
-    def normalize(self, raw: dict) -> Subsidy:
-        return Subsidy(
-            id=str(raw.get("서비스ID", "")),
-            name=normalize_text(raw.get("서비스명", ""), "이름없음"),
-            slug=generate_slug(raw.get("서비스명", "")),
-            category=apply_category_mapping("기타", _get_mappings()[0]),
-            description=normalize_text(raw.get("서비스목적요약", ""), "정보 없음"),
-            amount=normalize_text(raw.get("지원내용", ""), "정보 없음"),
-            organization=normalize_text(raw.get("소관기관명", ""), "정보 없음"),
-            region=["전국"],
-            age_min=None,
-            age_max=None,
-            gender=None,
-            income_percentile=None,
-            business_types=[],
-            deadline=normalize_text(raw.get("신청기한"), None),
-            documents=[],
-            url=raw.get("상세조회URL"),
-            source="gov24",
             raw_data=raw,
         )
 
