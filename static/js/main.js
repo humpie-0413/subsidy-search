@@ -10,6 +10,7 @@ async function loadFilters() {
 
 function fillSelect(id, items) {
   const el = document.getElementById(id);
+  if (!el) return;
   items.forEach(item => {
     const opt = document.createElement('option');
     opt.value = item; opt.textContent = item;
@@ -17,7 +18,7 @@ function fillSelect(id, items) {
   });
 }
 
-let ageInputMode = 'direct'; // 'direct' | 'birth'
+let ageInputMode = 'direct';
 
 function toggleAgeInput() {
   const link = document.getElementById('ageToggle');
@@ -103,7 +104,7 @@ function renderResults(data) {
   }
 
   document.getElementById('results').innerHTML = data.results.map(s => `
-    <div class="card" onclick="showDetail('${s.id}')" style="cursor:pointer">
+    <a href="/subsidies/${s.id}/${s.slug}" class="card card-link">
       <div class="card-header">
         <span class="card-title">${s.name}</span>
         <span>
@@ -122,36 +123,8 @@ function renderResults(data) {
         ${s.region.slice(0, 5).map(r => `<span class="tag">${r}</span>`).join('')}
         ${s.region.length > 5 ? `<span class="tag">+${s.region.length - 5}</span>` : ''}
       </div>
-    </div>
+    </a>
   `).join('');
-}
-
-async function showDetail(id) {
-  const res = await fetch(`${API}/api/subsidies/${id}`);
-  const s = await res.json();
-
-  document.getElementById('modalContent').innerHTML = `
-    <button class="modal-close" onclick="closeModal(event, true)">&times;</button>
-    <h2>${s.name}</h2>
-    <span class="badge">${s.category}</span> ${genderBadge(s.gender)}
-    <p style="margin: 1rem 0; color: #475569;">${s.description}</p>
-    <div class="detail-row"><span class="detail-label">지원금액</span> ${s.amount}</div>
-    <div class="detail-row"><span class="detail-label">연령</span> 만 ${s.age_min != null ? s.age_min : '?'}세 ~ ${s.age_max != null ? s.age_max : '?'}세</div>
-    <div class="detail-row"><span class="detail-label">성별</span> ${!s.gender ? '제한 없음' : s.gender + ' 전용'}</div>
-    <div class="detail-row"><span class="detail-label">소득기준</span> ${!s.income_percentile || s.income_percentile >= 100 ? '제한 없음' : `소득분위 ${s.income_percentile}% 이하`}</div>
-    <div class="detail-row"><span class="detail-label">지역</span> ${s.region.join(', ')}</div>
-    <div class="detail-row"><span class="detail-label">업종</span> ${s.business_types.length ? s.business_types.join(', ') : '제한 없음'}</div>
-    <div class="detail-row"><span class="detail-label">신청마감</span> ${s.deadline || '상시'}</div>
-    <div class="detail-row"><span class="detail-label">주관기관</span> ${s.organization}</div>
-    <div class="detail-row"><span class="detail-label">필요서류</span> ${s.documents.join(', ') || '정보 없음'}</div>
-  `;
-  document.getElementById('modal').classList.add('active');
-}
-
-function closeModal(e, force) {
-  if (force || e.target === document.getElementById('modal')) {
-    document.getElementById('modal').classList.remove('active');
-  }
 }
 
 function resetFilters() {
@@ -168,6 +141,8 @@ function resetFilters() {
   search();
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(e, true); });
-loadFilters();
-search();
+// Only init search page elements if they exist (not on detail/calculator pages)
+if (document.getElementById('region')) {
+  loadFilters();
+  search();
+}
