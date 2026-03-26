@@ -36,17 +36,37 @@ def test_bizinfo_normalize_basic():
         "pblancNm": "소상공인 경영안정자금",
         "jrsdInsttNm": "소상공인시장진흥공단",
         "bsnsSumryCn": "소상공인 대상 융자",
-        "sprtAmt": "최대 7000만원",
-        "trgtNm": "서울,경기",
-        "ageFrom": "",
-        "ageTo": "",
-        "pblancEndDe": "2026-12-31",
-        "detailUrl": "https://bizinfo.go.kr/detail",
+        "pldirSportRealmLclasCodeNm": "경영",
+        "hashTags": "소상공인,경영,서울,경기,융자",
+        "reqstBeginEndDe": "2026-01-01 ~ 2026-12-31",
+        "pblancUrl": "https://bizinfo.go.kr/detail",
     }
     s = client.normalize(raw)
     assert isinstance(s, Subsidy)
     assert s.id == "BZ001"
     assert s.source == "bizinfo"
+    assert s.name == "소상공인 경영안정자금"
+    assert s.category == "경영"
+    assert "서울" in s.region
+    assert "경기" in s.region
+    assert s.deadline == "2026-12-31"
+    assert s.url == "https://bizinfo.go.kr/detail"
+
+
+def test_bizinfo_region_extraction():
+    client = BizinfoClient(api_key="test")
+    assert client._extract_regions("창업,경영,강원,기업") == ["강원"]
+    assert client._extract_regions("서울,부산,대구") == ["서울", "부산", "대구"]
+    assert client._extract_regions("") == ["전국"]
+    assert client._extract_regions("일반,기타") == ["전국"]
+
+
+def test_bizinfo_category_mapping():
+    client = BizinfoClient(api_key="test")
+    assert client._map_category("금융") == "금융"
+    assert client._map_category("인력") == "고용"
+    assert client._map_category("") == "기타"
+    assert client._map_category("알수없는분야") == "기타"
 
 
 @pytest.mark.asyncio

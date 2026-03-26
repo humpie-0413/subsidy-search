@@ -131,60 +131,98 @@ class Gov24OdcloudClient(BaseAPIClient):
 class BizinfoClient(BaseAPIClient):
     """기업마당 API client (bizinfo.go.kr)."""
 
-    BASE_URL = "https://www.bizinfo.go.kr/uss/rss/bizApiList.json"
+    BASE_URL = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
+
+    # 17 시도 names for hashtag region extraction
+    KNOWN_REGIONS = {
+        "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종",
+        "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
+    }
+
+    # 기업마당 분야 → 서비스 카테고리
+    CATEGORY_MAP = {
+        "금융": "금융",
+        "기술": "기술",
+        "인력": "고용",
+        "수출": "수출",
+        "내수": "내수",
+        "창업": "창업",
+        "경영": "경영",
+        "기타": "기타",
+    }
 
     async def fetch_all(self) -> list[dict]:
-        records = []
-        page = 1
-        while True:
-            params = {
-                "crtfcKey": self.api_key,
-                "pageNo": page,
-                "dataRows": 100,
-            }
-            data = await self._fetch_with_retry(self.BASE_URL, params)
-            if not data:
-                break
-            try:
-                items = data.get("jsonArray", [])
-                if not items:
-                    break
-                records.extend(items)
-                total = int(data.get("totalCnt", 0))
-                if len(records) >= total:
-                    break
-                page += 1
-            except (KeyError, TypeError):
-                break
-        return records
+        params = {
+            "crtfcKey": self.api_key,
+            "dataType": "json",
+            "searchCnt": 0,
+        }
+        data = await self._fetch_with_retry(self.BASE_URL, params)
+        if not data:
+            return []
+        try:
+            items = data.get("jsonArray", [])
+            return items if items else []
+        except (KeyError, TypeError):
+            return []
+
+    def _extract_regions(self, hashtags: str) -> list[str]:
+        """Extract known region names from comma-separated hashtags."""
+        if not hashtags:
+            return ["전국"]
+        parts = [p.strip() for p in hashtags.split(",")]
+        regions = [p for p in parts if p in self.KNOWN_REGIONS]
+        return regions if regions else ["전국"]
+
+    def _map_category(self, raw_category: str) -> str:
+        """Map 기업마당 category to service category."""
+        if not raw_category:
+            return "기타"
+        for key, val in self.CATEGORY_MAP.items():
+            if key in raw_category:
+                return val
+        return "기타"
+
+    def _extract_deadline(self, raw: dict) -> str | None:
+        """Extract deadline from reqstBeginEndDe or pblancEndDe."""
+        date_str = raw.get("reqstBeginEndDe") or raw.get("pblancEndDe") or ""
+        if not date_str or not date_str.strip():
+            return None
+        # Format: "YYYY-MM-DD ~ YYYY-MM-DD" — take end date
+        parts = date_str.strip().split("~")
+        return parts[-1].strip() if parts[-1].strip() else None
 
     def normalize(self, raw: dict) -> Subsidy:
-        regions_raw = raw.get("trgtNm", "")
-        regions = [
-            apply_region_mapping(r.strip(), _get_mappings()[1])
-            for r in regions_raw.split(",") if r.strip()
-        ] if regions_raw else ["전국"]
-
-        age_from = raw.get("ageFrom", "")
-        age_to = raw.get("ageTo", "")
+        name = normalize_text(
+            raw.get("pblancNm") or raw.get("title", ""), "이름없음"
+        )
+        description = normalize_text(
+            raw.get("bsnsSumryCn") or raw.get("description", ""), "정보 없음"
+        )
+        organization = normalize_text(
+            raw.get("jrsdInsttNm") or raw.get("author", ""), "정보 없음"
+        )
+        raw_category = raw.get("pldirSportRealmLclasCodeNm") or raw.get("lcategory", "")
+        hashtags = raw.get("hashTags") or raw.get("hashtags", "")
+        url = raw.get("pblancUrl") or raw.get("link")
 
         return Subsidy(
             id=str(raw.get("pblancId", "")),
-            name=normalize_text(raw.get("pblancNm", ""), "이름없음"),
-            slug=generate_slug(raw.get("pblancNm", "")),
-            category=apply_category_mapping("기타", _get_mappings()[0]),
-            description=normalize_text(raw.get("bsnsSumryCn", ""), "정보 없음"),
-            amount=normalize_text(raw.get("sprtAmt", ""), "정보 없음"),
-            organization=normalize_text(raw.get("jrsdInsttNm", ""), "정보 없음"),
-            region=regions,
-            age_min=int(age_from) if str(age_from).isdigit() else None,
-            age_max=int(age_to) if str(age_to).isdigit() else None,
+            name=name,
+            slug=generate_slug(name),
+            category=self._map_category(raw_category),
+            description=description,
+            amount="정보 없음",
+            organization=organization,
+            region=self._extract_regions(hashtags),
+            age_min=None,
+            age_max=None,
             gender=None,
             income_percentile=None,
             business_types=[],
-            deadline=normalize_text(raw.get("pblancEndDe"), None),
+            deadline=self._extract_deadline(raw),
             documents=[],
-            url=raw.get("detailUrl"),
+            url=url,
             source="bizinfo",
             raw_data=raw,
         )
