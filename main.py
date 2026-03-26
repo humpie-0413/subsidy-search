@@ -4,12 +4,13 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query, Request
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -128,6 +129,44 @@ def index(request: Request):
         "page_description": "나이, 지역, 소득 조건에 맞는 정부 보조금을 검색하세요",
         "canonical_url": canonical,
         "og_type": "website",
+    })
+
+
+def _find_subsidy(subsidy_id: str) -> Subsidy | None:
+    """Find a single subsidy by ID."""
+    for s in _get_subsidies():
+        if s.id == subsidy_id:
+            return s
+    return None
+
+
+def _get_related(subsidy: Subsidy, limit: int = 3) -> list[Subsidy]:
+    """Get related subsidies in same category, excluding self."""
+    all_subsidies = _get_subsidies()
+    related = [s for s in all_subsidies if s.category == subsidy.category and s.id != subsidy.id]
+    return related[:limit]
+
+
+@app.get("/subsidies/{subsidy_id}/{slug}", response_class=HTMLResponse)
+def subsidy_detail(request: Request, subsidy_id: str, slug: str):
+    subsidy = _find_subsidy(subsidy_id)
+    if not subsidy:
+        return HTMLResponse(content="보조금을 찾을 수 없습니다", status_code=404)
+    if slug != subsidy.slug:
+        return RedirectResponse(
+            url=f"/subsidies/{subsidy_id}/{subsidy.slug}", status_code=301
+        )
+    year = datetime.now().year
+    site_domain = os.getenv("SITE_DOMAIN", "")
+    canonical = f"https://{site_domain}/subsidies/{subsidy_id}/{subsidy.slug}" if site_domain else None
+    related = _get_related(subsidy)
+    return templates.TemplateResponse(request, "subsidy_detail.html", {
+        "subsidy": subsidy,
+        "related": related,
+        "page_title": f"{subsidy.name} - 신청 조건 및 방법 ({year})",
+        "page_description": f"{subsidy.name}: {subsidy.amount}, 만 {subsidy.age_min or '?'}~{subsidy.age_max or '?'}세, 마감 {subsidy.deadline or '상시'}",
+        "canonical_url": canonical,
+        "og_type": "article",
     })
 
 

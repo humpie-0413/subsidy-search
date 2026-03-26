@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+[
+  {
+    "@context": "https://schema.org",
+    "@type": "GovernmentService",
+    "name": "{{ subsidy.name }}",
+    "description": "{{ subsidy.description }}",
+    "provider": {
+      "@type": "GovernmentOrganization",
+      "name": "{{ subsidy.organization }}"
+    },
+    "serviceType": "{{ subsidy.category }}"
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "신청 자격은?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "{{ subsidy.age_min if subsidy.age_min is not none else '제한없음' }}~{{ subsidy.age_max if subsidy.age_max is not none else '제한없음' }}세, {{ subsidy.region | join(', ') }}, 소득분위 {{ subsidy.income_percentile if subsidy.income_percentile is not none else '제한없음' }}% 이하"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "지원 금액은?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "{{ subsidy.amount }}"
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "신청 방법은?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "{{ subsidy.organization }}을 통해 신청. 필요서류: {{ subsidy.documents | join(', ') if subsidy.documents else '정보 없음' }}"
+        }
+      }
+    ]
+  }
+]
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="detail-page">
+    <a href="/" class="back-link">&larr; 검색으로 돌아가기</a>
+
+    <h2 class="detail-title">{{ subsidy.name }}</h2>
+    <div class="detail-badges">
+      <span class="badge">{{ subsidy.category }}</span>
+      {% if subsidy.gender == '여성' %}<span class="badge badge-gender">여성 전용</span>{% endif %}
+      {% if subsidy.gender == '남성' %}<span class="badge badge-gender-m">남성 전용</span>{% endif %}
+    </div>
+
+    <p class="detail-desc">{{ subsidy.description }}</p>
+
+    <div class="detail-info">
+      <div class="detail-row"><span class="detail-label">지원금액</span> {{ subsidy.amount }}</div>
+      <div class="detail-row"><span class="detail-label">연령</span> 만 {{ subsidy.age_min if subsidy.age_min is not none else '?' }}세 ~ {{ subsidy.age_max if subsidy.age_max is not none else '?' }}세</div>
+      <div class="detail-row"><span class="detail-label">성별</span> {{ '제한 없음' if not subsidy.gender else subsidy.gender + ' 전용' }}</div>
+      <div class="detail-row"><span class="detail-label">소득기준</span> {{ '제한 없음' if not subsidy.income_percentile or subsidy.income_percentile >= 100 else '소득분위 ' + subsidy.income_percentile|string + '% 이하' }}</div>
+      <div class="detail-row"><span class="detail-label">지역</span> {{ subsidy.region | join(', ') }}</div>
+      <div class="detail-row"><span class="detail-label">업종</span> {{ subsidy.business_types | join(', ') if subsidy.business_types else '제한 없음' }}</div>
+      <div class="detail-row"><span class="detail-label">신청마감</span> {{ subsidy.deadline or '상시' }}</div>
+      <div class="detail-row"><span class="detail-label">주관기관</span> {{ subsidy.organization }}</div>
+      <div class="detail-row"><span class="detail-label">필요서류</span> {{ subsidy.documents | join(', ') if subsidy.documents else '정보 없음' }}</div>
+      {% if subsidy.url %}
+      <div class="detail-row"><span class="detail-label">원본 공고</span> <a href="{{ subsidy.url }}" target="_blank" rel="noopener">바로가기</a></div>
+      {% endif %}
+    </div>
+
+    <!-- 내부 링크 블록 -->
+    <div class="related-section">
+      <h3>관련 보조금</h3>
+      <div class="related-grid">
+        {% for r in related %}
+        <a href="/subsidies/{{ r.id }}/{{ r.slug }}" class="related-card">
+          <span class="related-name">{{ r.name }}</span>
+          <span class="related-amount">{{ r.amount }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="related-section">
+      <h3>더 찾아보기</h3>
+      <div class="link-chips">
+        <a href="/category/{{ subsidy.category }}" class="chip">{{ subsidy.category }} 보조금 더보기</a>
+        {% for r in subsidy.region[:3] %}
+        <a href="/region/{{ r }}" class="chip">{{ r }} 보조금 더보기</a>
+        {% endfor %}
+        <a href="/calculator" class="chip">보조금 매칭 계산기</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
