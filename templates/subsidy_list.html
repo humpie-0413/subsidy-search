@@ -54,10 +54,10 @@
     <div class="related-section">
       <h3>더 찾아보기</h3>
       <div class="link-chips">
-        {% for c in all_categories[:8] %}
+        {% for c in all_categories %}
         <a href="/category/{{ c }}" class="chip{{ ' chip-active' if c == active_filter else '' }}">{{ c }}</a>
         {% endfor %}
-        {% for r in all_regions[:8] %}
+        {% for r in all_regions %}
         <a href="/region/{{ r }}" class="chip{{ ' chip-active' if r == active_filter else '' }}">{{ r }}</a>
         {% endfor %}
         <a href="/calculator" class="chip">보조금 매칭 계산기</a>
