@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "{{ year }} 보조금 매칭 계산기",
+  "description": "나이, 지역, 소득 조건을 입력하면 받을 수 있는 보조금을 알려드립니다",
+  "applicationCategory": "GovernmentApplication",
+  "operatingSystem": "Web"
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="calc-page">
+    <h2 class="calc-title">{{ year }} 보조금 매칭 계산기</h2>
+    <p class="calc-subtitle">조건을 입력하면 받을 수 있는 보조금을 알려드립니다</p>
+
+    <form class="calc-form" method="get" action="/calculator">
+      <div class="calc-grid">
+        <div class="filter-group">
+          <label for="calc-age">나이 (만 나이) *</label>
+          <input type="number" id="calc-age" name="age" placeholder="예: 28" min="1" max="120"
+                 value="{{ params.age or '' }}" required>
+        </div>
+        <div class="filter-group">
+          <label for="calc-region">지역 *</label>
+          <select id="calc-region" name="region" required>
+            <option value="">선택하세요</option>
+            {% for r in regions %}
+            <option value="{{ r }}" {{ 'selected' if params.region == r else '' }}>{{ r }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="calc-income">월소득 (만원) *</label>
+          <input type="number" id="calc-income" name="income" placeholder="예: 250" min="0"
+                 value="{{ params.income or '' }}" required>
+        </div>
+        <div class="filter-group">
+          <label for="calc-household">가구 형태 *</label>
+          <select id="calc-household" name="household" required>
+            <option value="">선택하세요</option>
+            <option value="1" {{ 'selected' if params.household == '1' else '' }}>1인가구</option>
+            <option value="2" {{ 'selected' if params.household == '2' else '' }}>2인가구</option>
+            <option value="3" {{ 'selected' if params.household == '3' else '' }}>3인가구</option>
+            <option value="4" {{ 'selected' if params.household == '4' else '' }}>4인 이상</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button type="submit" class="btn btn-primary">매칭 결과 보기</button>
+        <a href="/calculator" class="btn btn-secondary">초기화</a>
+      </div>
+    </form>
+
+    {% if results is not none %}
+    <div class="calc-results">
+      <div class="calc-summary">
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">내 소득분위</span>
+          <span class="calc-summary-value">약 {{ income_percentile }}%</span>
+        </div>
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">매칭 보조금</span>
+          <span class="calc-summary-value">{{ results | length }}건</span>
+        </div>
+        {% if total_amount > 0 %}
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">예상 총 수혜액</span>
+          <span class="calc-summary-value">{{ "{:,.0f}".format(total_amount) }}원{% if unparseable_count > 0 %} + {{ unparseable_count }}건 별도 확인{% endif %}</span>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if results %}
+      <div class="calc-result-list">
+        {% for item in results %}
+        <a href="/subsidies/{{ item.id }}/{{ item.slug }}" class="calc-result-card">
+          <div class="calc-result-header">
+            <span class="calc-result-name">{{ item.name }}</span>
+            <span class="badge">{{ item.category }}</span>
+          </div>
+          <div class="calc-result-meta">
+            <span>{{ item.amount }}</span>
+            <span>마감: {{ item.deadline or '상시' }}</span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="icon">&#128270;</div>
+        <p>조건에 맞는 보조금이 없습니다.</p>
+      </div>
+      {% endif %}
+
+      <!-- SNS 공유 -->
+      <div class="share-section">
+        <span class="share-label">결과 공유:</span>
+        <a href="https://twitter.com/intent/tweet?text={{ share_text | urlencode }}&url={{ share_url | urlencode }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Twitter</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="related-section">
+      <h3>더 찾아보기</h3>
+      <div class="link-chips">
+        <a href="/" class="chip">보조금 검색</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

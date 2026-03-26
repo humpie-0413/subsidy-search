@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from api_client import AggregatedClient, Bojokim24Client, BizinfoClient, Gov24Client
+from calculator import calculate_income_percentile, extract_amount_number
 from cache import TTLCache
 from data import SUBSIDIES as LEGACY_SUBSIDIES
 from data_cleaner import convert_legacy
@@ -167,6 +168,75 @@ def subsidy_detail(request: Request, subsidy_id: str, slug: str):
         "page_description": f"{subsidy.name}: {subsidy.amount}, 만 {subsidy.age_min or '?'}~{subsidy.age_max or '?'}세, 마감 {subsidy.deadline or '상시'}",
         "canonical_url": canonical,
         "og_type": "article",
+    })
+
+
+@app.get("/calculator", response_class=HTMLResponse)
+def calculator_page(
+    request: Request,
+    age: Optional[int] = Query(None),
+    region: Optional[str] = Query(None),
+    income: Optional[int] = Query(None),
+    household: Optional[int] = Query(None),
+):
+    year = datetime.now().year
+    site_domain = os.getenv("SITE_DOMAIN", "")
+    subsidies = _get_subsidies()
+    all_regions = sorted(set(r for s in subsidies for r in s.region))
+    params = {"age": str(age) if age else "", "region": region or "",
+              "income": str(income) if income else "", "household": str(household) if household else ""}
+
+    results = None
+    income_percentile = None
+    total_amount = 0
+    unparseable_count = 0
+    share_text = ""
+    share_url = ""
+
+    if age is not None and region and income is not None and household:
+        income_monthly = income * 10000  # 만원 → 원
+        income_percentile = calculate_income_percentile(income_monthly, household)
+
+        matched = []
+        for s in subsidies:
+            if s.age_min is not None and age < s.age_min:
+                continue
+            if s.age_max is not None and age > s.age_max:
+                continue
+            if region not in s.region:
+                continue
+            if s.income_percentile is not None and income_percentile > s.income_percentile:
+                continue
+            matched.append(s)
+
+        results = matched
+
+        for s in matched:
+            amt = extract_amount_number(s.amount)
+            if amt is not None:
+                total_amount += amt
+            else:
+                unparseable_count += 1
+
+        share_text = f"{year} 보조금 매칭 결과: {len(matched)}건 매칭!"
+        canonical_params = f"?age={age}&region={region}&income={income}&household={household}"
+        share_url = f"https://{site_domain}/calculator{canonical_params}" if site_domain else f"/calculator{canonical_params}"
+
+    canonical = f"https://{site_domain}/calculator" if site_domain else None
+    return templates.TemplateResponse(request, "calculator.html", {
+        "page_title": f"{year} 보조금 매칭 계산기 - 내게 맞는 보조금 찾기",
+        "page_description": "나이, 지역, 소득 조건을 입력하면 받을 수 있는 보조금을 알려드립니다",
+        "canonical_url": canonical,
+        "og_type": "website",
+        "year": year,
+        "regions": all_regions,
+        "params": params,
+        "results": results,
+        "income_percentile": income_percentile,
+        "total_amount": total_amount,
+        "unparseable_count": unparseable_count,
+        "share_text": share_text,
+        "share_url": share_url,
     })
 
 
