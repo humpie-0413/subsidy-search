@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "{{ list_title }}",
+  "numberOfItems": {{ subsidies | length }},
+  "itemListElement": [
+    {% for s in subsidies %}
+    {
+      "@type": "ListItem",
+      "position": {{ loop.index }},
+      "url": "https://{{ domain }}/subsidies/{{ s.id }}/{{ s.slug }}",
+      "name": "{{ s.name }}"
+    }{{ "," if not loop.last else "" }}
+    {% endfor %}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="list-page">
+    <a href="/" class="back-link">&larr; 검색으로 돌아가기</a>
+
+    <h2 class="list-title">{{ list_title }}</h2>
+    <p class="list-count">총 <strong>{{ subsidies | length }}건</strong>의 보조금</p>
+
+    {% if subsidies %}
+    <div class="list-grid">
+      {% for s in subsidies %}
+      <a href="/subsidies/{{ s.id }}/{{ s.slug }}" class="list-card">
+        <div class="list-card-header">
+          <span class="list-card-name">{{ s.name }}</span>
+          <span class="badge">{{ s.category }}</span>
+        </div>
+        <div class="list-card-meta">
+          <span>{{ s.amount }}</span>
+          <span>마감: {{ s.deadline or '상시' }}</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">&#128270;</div>
+      <p>해당 조건의 보조금이 없습니다.</p>
+    </div>
+    {% endif %}
+
+    <div class="related-section">
+      <h3>더 찾아보기</h3>
+      <div class="link-chips">
+        {% for c in all_categories[:8] %}
+        <a href="/category/{{ c }}" class="chip{{ ' chip-active' if c == active_filter else '' }}">{{ c }}</a>
+        {% endfor %}
+        {% for r in all_regions[:8] %}
+        <a href="/region/{{ r }}" class="chip{{ ' chip-active' if r == active_filter else '' }}">{{ r }}</a>
+        {% endfor %}
+        <a href="/calculator" class="chip">보조금 매칭 계산기</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

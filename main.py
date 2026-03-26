@@ -240,6 +240,50 @@ def calculator_page(
     })
 
 
+@app.get("/category/{category}", response_class=HTMLResponse)
+def category_page(request: Request, category: str):
+    year = datetime.now().year
+    site_domain = os.getenv("SITE_DOMAIN", "")
+    all_subsidies = _get_subsidies()
+    filtered = [s for s in all_subsidies if s.category == category]
+    filters = _build_filters(all_subsidies)
+    canonical = f"https://{site_domain}/category/{category}" if site_domain else None
+    return templates.TemplateResponse(request, "subsidy_list.html", {
+        "page_title": f"{year} {category} 보조금 목록 ({len(filtered)}건)",
+        "page_description": f"{year}년 {category} 관련 정부 보조금 {len(filtered)}건",
+        "canonical_url": canonical,
+        "og_type": "website",
+        "list_title": f"{year} {category} 보조금 목록",
+        "subsidies": filtered,
+        "domain": site_domain,
+        "all_categories": filters["categories"],
+        "all_regions": filters["regions"],
+        "active_filter": category,
+    })
+
+
+@app.get("/region/{region}", response_class=HTMLResponse)
+def region_page(request: Request, region: str):
+    year = datetime.now().year
+    site_domain = os.getenv("SITE_DOMAIN", "")
+    all_subsidies = _get_subsidies()
+    filtered = [s for s in all_subsidies if region in s.region]
+    filters = _build_filters(all_subsidies)
+    canonical = f"https://{site_domain}/region/{region}" if site_domain else None
+    return templates.TemplateResponse(request, "subsidy_list.html", {
+        "page_title": f"{year} {region} 보조금 목록 ({len(filtered)}건)",
+        "page_description": f"{year}년 {region}에서 신청 가능한 정부 보조금 {len(filtered)}건",
+        "canonical_url": canonical,
+        "og_type": "website",
+        "list_title": f"{year} {region} 보조금 목록",
+        "subsidies": filtered,
+        "domain": site_domain,
+        "all_categories": filters["categories"],
+        "all_regions": filters["regions"],
+        "active_filter": region,
+    })
+
+
 # --- API Routes ---
 
 @app.get("/api/filters")
